@@ -25,7 +25,7 @@ class binarytimeView extends WatchUi.WatchFace {
     var minBinary = decToBinary(now.min, 1);
     var nowHour = now.hour;
     if (!System.getDeviceSettings().is24Hour) {
-      nowHour = nowHour % 12;
+      nowHour = (nowHour - 1) % 12 + 1;
     }
     var hourBinary = decToBinary(nowHour, 2);
 
