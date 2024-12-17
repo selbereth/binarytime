@@ -24,6 +24,7 @@ class binarytimeView extends WatchUi.WatchFace {
     var isAm = now.hour < 12;
     var minBinary = decToBinary(now.min, 1);
     var nowHour = now.hour;
+
     if (!System.getDeviceSettings().is24Hour) {
       nowHour = (nowHour - 1) % 12 + 1;
     }
@@ -32,10 +33,17 @@ class binarytimeView extends WatchUi.WatchFace {
     var dayBinary = decToBinary(now.day, 1);
     var monthBinary = decToBinary(now.month, 2);
 
+    var dayOfWeekBinary = [ 0, 0, 0, 0, 0, 0 ] as Array<Number>;
+    if (now.day_of_week != 1) {
+      dayOfWeekBinary[now.day_of_week - 2] = 2;
+    }
+
     // Call the parent onUpdate function to redraw the layout
     View.onUpdate(dc);
 
     drawHexagon(dc, dc.getWidth(), addBinaries(minBinary, hourBinary), isAm);
+    drawHexagon(dc, dc.getWidth() / 3, dayOfWeekBinary,
+                isAm);
     drawHexagon(dc, dc.getWidth() / 4, addBinaries(dayBinary, monthBinary),
                 isAm);
   }
