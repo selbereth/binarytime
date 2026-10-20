@@ -3,3 +3,9 @@ export
 mir
 internal-mir
 gen
+
+.DS_Store
+*.prg
+*.prg.debug.xml
+*.code-workspace
+.vscode/settings.json

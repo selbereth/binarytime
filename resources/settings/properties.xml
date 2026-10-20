@@ -1,9 +1,9 @@
 <properties>
 
-    <property id="FirstColor" type="number">0x00AA00</property> 
-    <property id="SecondColor" type="number">0xAA0000</property> 
-    <property id="ComboColor" type="number">0x0000AA</property>  
-    <property id="AmColor" type="number">0x000000</property>  
-    <property id="PmColor" type="number">0xFFFFFF</property>  
+    <property id="FirstColor" type="number">0x00AA00</property>  <!-- green -->
+    <property id="SecondColor" type="number">0xAA0000</property> <!-- red -->
+    <property id="ComboColor" type="number">0x0000AA</property>  <!-- blue -->
+    <property id="AmColor" type="number">0x000000</property>  <!-- black -->
+    <property id="PmColor" type="number">0xFFFFFF</property>  <!-- white -->
 
 </properties>

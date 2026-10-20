@@ -6,6 +6,13 @@ import Toybox.Time;
 import Toybox.Time.Gregorian;
 
 class binarytimeView extends WatchUi.WatchFace {
+  // Seconds ring radius and band thickness, as fractions of the screen width.
+  // The ring must be small enough that its edges land on screen.
+  const SECONDS_RADIUS = 0.57;
+  const SECONDS_BAND = 0.04;
+
+  var isAsleep = false;
+
   function initialize() { WatchFace.initialize(); }
 
   // Load your resources here
@@ -41,11 +48,18 @@ class binarytimeView extends WatchUi.WatchFace {
     // Call the parent onUpdate function to redraw the layout
     View.onUpdate(dc);
 
-    drawHexagon(dc, dc.getWidth(), addBinaries(minBinary, hourBinary), isAm);
-    drawHexagon(dc, dc.getWidth() / 3, dayOfWeekBinary,
-                isAm);
-    drawHexagon(dc, dc.getWidth() / 4, addBinaries(dayBinary, monthBinary),
-                isAm);
+    var width = dc.getWidth();
+    var secondsRadius = width * SECONDS_RADIUS;
+    var mainRadius = secondsRadius - width * SECONDS_BAND;
+
+    // Seconds are only drawn when awake, since low power mode redraws once a
+    // minute. The main hexagon is drawn over the ring's interior.
+    if (!isAsleep) {
+      drawHexagon(dc, secondsRadius, decToBinary(now.sec, 1), isAm);
+    }
+    drawHexagon(dc, mainRadius, addBinaries(minBinary, hourBinary), isAm);
+    drawHexagon(dc, dc.getWidth() / 3, dayOfWeekBinary, isAm);
+    drawHexagon(dc, dc.getWidth() / 4, addBinaries(dayBinary, monthBinary), isAm);
   }
 
   function addBinaries(a as Array<Number>, b as Array<Number>)
@@ -144,8 +158,14 @@ class binarytimeView extends WatchUi.WatchFace {
 
   // The user has just looked at their watch. Timers and animations may be
   // started here.
-  function onExitSleep() as Void {}
+  function onExitSleep() as Void {
+    isAsleep = false;
+    WatchUi.requestUpdate();
+  }
 
   // Terminate any active timers and prepare for slow updates.
-  function onEnterSleep() as Void {}
+  function onEnterSleep() as Void {
+    isAsleep = true;
+    WatchUi.requestUpdate();
+  }
 }

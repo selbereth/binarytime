@@ -17,8 +17,8 @@ class binarytimeApp extends Application.AppBase {
     }
 
     // Return the initial view of your application here
-    function getInitialView()  {
-        return [new binarytimeView()] as Array[View];
+      function getInitialView() as Array<Views or InputDelegates>? {
+        return [ new binarytimeView() ] as Array<Views or InputDelegates>;
     }
 
     // New app settings have been received so trigger a UI update
