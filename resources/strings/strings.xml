@@ -4,6 +4,7 @@
         <string id="FirstColorTitle">First Color</string> 
     <string id="SecondColorTitle">Second Color</string> 
     <string id="ComboColorTitle">Combo Color</string> 
+    <string id="SecondsColorTitle">Seconds Color</string> 
     <string id="AmColorTitle">AM Color</string> 
     <string id="PmColorTitle">PM Color</string> 
  

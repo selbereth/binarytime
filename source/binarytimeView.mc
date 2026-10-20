@@ -6,17 +6,46 @@ import Toybox.Time;
 import Toybox.Time.Gregorian;
 
 class binarytimeView extends WatchUi.WatchFace {
-  // Seconds ring radius and band thickness, as fractions of the screen width.
-  // The ring must be small enough that its edges land on screen.
-  const SECONDS_RADIUS = 0.57;
-  const SECONDS_BAND = 0.04;
+  // Six rays leave the screen centre and stop at the screen edge. Their end
+  // points (offsets from the centre, y down) are the corners of every shape:
+  // right, upper right, upper left, left, lower left, lower right. On a round
+  // screen the rays are 60 degrees apart (a hexagon on the circle). On any other
+  // screen the slanted rays run into the corners and the others into the side
+  // midpoints, so a square screen gets a square. Inner shapes are smaller
+  // copies of the same shape, which keeps them square too.
+  var rayX = new Array<Float>[6];
+  var rayY = new Array<Float>[6];
+  // Scale of the main shape and of the seconds ring relative to the ray ends.
+  // The seconds ring is bigger than the screen on every shape, so its wedges run
+  // off the edge with no outline showing (on a round screen the hexagon's flat
+  // edges would otherwise fall short of the circle).
+  var mainScale = 1.0;
+  var secondsScale = 1.2;
 
   var isAsleep = false;
 
   function initialize() { WatchFace.initialize(); }
 
   // Load your resources here
-  function onLayout(dc as Dc) as Void { setLayout(Rez.Layouts.WatchFace(dc)); }
+  function onLayout(dc as Dc) as Void {
+    setLayout(Rez.Layouts.WatchFace(dc));
+
+    var halfW = dc.getWidth() / 2.0;
+    var halfH = dc.getHeight() / 2.0;
+    if (System.getDeviceSettings().screenShape == System.SCREEN_SHAPE_ROUND) {
+      var r = halfW < halfH ? halfW : halfH;
+      var h = r * 0.866;
+      rayX = [ r, r / 2, -r / 2, -r, -r / 2, r / 2 ] as Array<Float>;
+      rayY = [ 0.0, -h, -h, 0.0, h, h ] as Array<Float>;
+      mainScale = 1.0;
+      secondsScale = 1.2;
+    } else {
+      rayX = [ halfW, halfW, -halfW, -halfW, -halfW, halfW ] as Array<Float>;
+      rayY = [ 0.0, -halfH, -halfH, 0.0, halfH, halfH ] as Array<Float>;
+      mainScale = 0.88;
+      secondsScale = 1.2;
+    }
+  }
 
   // Called when this View is brought to the foreground. Restore
   // the state of this View and prepare it to be shown. This includes
@@ -48,18 +77,24 @@ class binarytimeView extends WatchUi.WatchFace {
     // Call the parent onUpdate function to redraw the layout
     View.onUpdate(dc);
 
-    var width = dc.getWidth();
-    var secondsRadius = width * SECONDS_RADIUS;
-    var mainRadius = secondsRadius - width * SECONDS_BAND;
+    var palette = [
+      Graphics.COLOR_BLACK, getApp().getProperty("FirstColor"),
+      getApp().getProperty("SecondColor"), getApp().getProperty("ComboColor")
+    ];
+    // Seconds only ever use value 1, so only the first two entries matter.
+    var secondsPalette =
+        [ Graphics.COLOR_BLACK, getApp().getProperty("SecondsColor") ];
 
     // Seconds are only drawn when awake, since low power mode redraws once a
-    // minute. The main hexagon is drawn over the ring's interior.
+    // minute. The main shape is drawn over the ring's interior.
     if (!isAsleep) {
-      drawHexagon(dc, secondsRadius, decToBinary(now.sec, 1), isAm);
+      drawShape(dc, secondsScale, decToBinary(now.sec, 1), isAm,
+                secondsPalette);
     }
-    drawHexagon(dc, mainRadius, addBinaries(minBinary, hourBinary), isAm);
-    drawHexagon(dc, dc.getWidth() / 3, dayOfWeekBinary, isAm);
-    drawHexagon(dc, dc.getWidth() / 4, addBinaries(dayBinary, monthBinary), isAm);
+    drawShape(dc, mainScale, addBinaries(minBinary, hourBinary), isAm, palette);
+    drawShape(dc, mainScale * 2 / 3, dayOfWeekBinary, isAm, palette);
+    drawShape(dc, mainScale / 2, addBinaries(dayBinary, monthBinary), isAm,
+              palette);
   }
 
   function addBinaries(a as Array<Number>, b as Array<Number>)
@@ -93,62 +128,41 @@ class binarytimeView extends WatchUi.WatchFace {
     return binaryNum;
   }
 
-  function drawHexagon(dc, radius, arr as Array<Number>, isAM as Boolean)
-      as Void {
-    var colorCode = [
-      Graphics.COLOR_BLACK, getApp().getProperty("FirstColor"),
-      getApp().getProperty("SecondColor"), getApp().getProperty("ComboColor")
-    ];
+  function drawShape(dc, scale, arr as Array<Number>, isAM as Boolean,
+                     colorCode as Array) as Void {
+    var cx = dc.getWidth() / 2;
+    var cy = dc.getHeight() / 2;
 
-    var halfWidth = dc.getWidth() / 2;
-    var halfHeight = dc.getHeight() / 2;
+    var px = new Array<Float>[6];
+    var py = new Array<Float>[6];
+    for (var i = 0; i < 6; i++) {
+      px[i] = cx + rayX[i] * scale;
+      py[i] = cy + rayY[i] * scale;
+    }
 
-    var arm = radius;
-    var sqrt3 = (arm * 1.732) / 2;
-    var halfArm = arm / 2;
-    var a = [ arm + halfWidth, halfHeight ];
-    var b = [ halfArm + halfWidth, halfHeight - sqrt3 ];
-    var c = [ halfWidth - halfArm, halfHeight - sqrt3 ];
-    var d = [ halfWidth - arm, halfHeight ];
-    var e = [ halfWidth - halfArm, sqrt3 + halfHeight ];
-    var f = [ halfArm + halfWidth, sqrt3 + halfHeight ];
-    var p = [ halfWidth, halfHeight ];
-
-    var iPoints0 = [ c, b, p ] as Lang.Array<Lang.Array<Lang.Numeric>>;
-    var iPoints1 = [ a, b, p ] as Lang.Array<Lang.Array<Lang.Numeric>>;
-    var iPoints2 = [ a, f, p ] as Lang.Array<Lang.Array<Lang.Numeric>>;
-    var iPoints3 = [ e, f, p ] as Lang.Array<Lang.Array<Lang.Numeric>>;
-    var iPoints4 = [ e, d, p ] as Lang.Array<Lang.Array<Lang.Numeric>>;
-    var iPoints5 = [ d, c, p ] as Lang.Array<Lang.Array<Lang.Numeric>>;
-
-    dc.setColor(colorCode[arr[0]], Graphics.COLOR_BLACK);
-    dc.fillPolygon(iPoints0);
-    dc.setColor(colorCode[arr[1]], Graphics.COLOR_BLACK);
-    dc.fillPolygon(iPoints1);
-    dc.setColor(colorCode[arr[2]], Graphics.COLOR_BLACK);
-    dc.fillPolygon(iPoints2);
-    dc.setColor(colorCode[arr[3]], Graphics.COLOR_BLACK);
-    dc.fillPolygon(iPoints3);
-    dc.setColor(colorCode[arr[4]], Graphics.COLOR_BLACK);
-    dc.fillPolygon(iPoints4);
-    dc.setColor(colorCode[arr[5]], Graphics.COLOR_BLACK);
-    dc.fillPolygon(iPoints5);
+    // Wedge i is the triangle centre, first, second. Bit 0 is the top wedge,
+    // then clockwise.
+    var first = [ 2, 0, 0, 4, 4, 3 ];
+    var second = [ 1, 1, 5, 5, 3, 2 ];
+    for (var i = 0; i < 6; i++) {
+      var f = first[i];
+      var s = second[i];
+      dc.setColor(colorCode[arr[i]], Graphics.COLOR_BLACK);
+      dc.fillPolygon([ [ cx, cy ], [ px[f], py[f] ], [ px[s], py[s] ] ]);
+    }
 
     if (isAM) {
       dc.setColor(getApp().getProperty("AmColor"), Graphics.COLOR_BLACK);
     } else {
       dc.setColor(getApp().getProperty("PmColor"), Graphics.COLOR_BLACK);
     }
-    dc.drawLine(a[0], a[1], d[0], d[1]);
-    dc.drawLine(b[0], b[1], e[0], e[1]);
-    dc.drawLine(c[0], c[1], f[0], f[1]);
-
-    dc.drawLine(a[0], a[1], b[0], b[1]);
-    dc.drawLine(b[0], b[1], c[0], c[1]);
-    dc.drawLine(c[0], c[1], d[0], d[1]);
-    dc.drawLine(e[0], e[1], d[0], d[1]);
-    dc.drawLine(f[0], f[1], e[0], e[1]);
-    dc.drawLine(a[0], a[1], f[0], f[1]);
+    for (var i = 0; i < 3; i++) {
+      dc.drawLine(px[i], py[i], px[i + 3], py[i + 3]);
+    }
+    for (var i = 0; i < 6; i++) {
+      var n = (i + 1) % 6;
+      dc.drawLine(px[i], py[i], px[n], py[n]);
+    }
   }
 
   // Called when this View is removed from the screen. Save the
